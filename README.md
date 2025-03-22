@@ -1,5 +1,5 @@
 # Negative Rejection Steering
-NRS seeks to replace the 'naive' linear interpolation of Classifier Free Guidance with a more nuanced steering of the generation process.
+NRS seeks to replace the 'naive' linear interpolation of Classifier Free Guidance with a more nuanced and composable steering of the generation process with better mathematical basis.
 
 This is accomplised in 3 steps:
 1. **Displacement**: The conditioned output tensor is displaced in the direction of the rejection of the unconditioned tensor on the conditioned tensor. This lengthens the tensor in a direction perpendicular to it's direction without affecting the positive guidance. The tensor is displaced by the rejection x the Displacement parameter.
