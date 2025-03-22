@@ -13,7 +13,9 @@ Implements NRS with Skew, Stretch, and Squash parameters.
 Skew and Stretch are roughly similar to CFG, but decomposed, with `Stretch + Skew = 2 * CFG`, roughly.
 
 **Skew** changes the 'direction' of generation, which should result in changes to the content and composition of the image.
+
 **Stretch** changes to 'amplification' of generation, which should result in stronger prompt representation.
+
 **Squash** 'normalizes' the resulting guidance back towards the original amplitude with 1.0 being the same amplitude, while 0.0 is the unmodified amplitude resulting from the Squash and Stretch functions.
 
 ## Beginner How-To
