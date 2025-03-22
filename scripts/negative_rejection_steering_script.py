@@ -11,8 +11,9 @@ class NRSScript(scripts.Script):
     def __init__(self):
         super().__init__()
         self.enabled = False
-        self.squash = 0.5
-        self.stretch = 1.0
+        self.skew = 2.0
+        self.stretch = 2.0
+        self.squash = 1.0
 
     sorting_priority = 5
 
@@ -26,23 +27,27 @@ class NRSScript(scripts.Script):
         with gr.Accordion(open=False, label=self.title()):
             gr.HTML("<p><i>Adjust the settings for Negative Rejection Steering.</i></p>")
             enabled = gr.Checkbox(label="Enable NRS", value=self.enabled)
+            gr.HTML("<p><i>Adjust the amount guidance is steered.</i></p>")
+            skew = gr.Slider(label="NRS Skew Scale", minimum=-30.0, maximum=30.0, step=0.01, value=self.skew)
+            gr.HTML("<p><i>Adjust the amount guidance is amplified.</i></p>")
+            stretch = gr.Slider(label="NRS Stretch Scale", minimum=-30.0, maximum=30.0, step=0.01, value=self.stretch)
+            gr.HTML("<p><i>Adjust the amount final guidance is normalized.</i></p>")
             squash = gr.Slider(label="NRS Squash Multiplier", minimum=0.0, maximum=1.0, step=0.01, value=self.squash)
-            stretch = gr.Slider(label="NRS Stretch Multiplier", minimum=-1.0, maximum=30.0, step=0.01, value=self.stretch)
 
         enabled.change(
             lambda x: self.update_enabled(x),
             inputs=[enabled]
         )
 
-        return (enabled, squash, stretch)
+        return (enabled, skew, stretch, squash)
     
 
     def update_enabled(self, value):
         self.enabled = value
 
     def process_before_every_sampling(self, p, *args, **kwargs):
-        if len(args) >= 3:
-            self.enabled, self.squash, self.stretch = args[:3]
+        if len(args) >= 4:
+            self.enabled, self.skew, self.stretch, self.squash = args[:4]
         else:
             logging.warning("Not enough arguments provided to process_before_every_sampling")
             return
@@ -50,10 +55,12 @@ class NRSScript(scripts.Script):
         xyz = getattr(p, "_nrs_xyz", {})
         if "enabled" in xyz:
             self.enabled = xyz["enabled"] == "True"
-        if "squash" in xyz:
-            self.squash = xyz["squash"]
+        if "skew" in xyz:
+            self.skew = xyz["skew"]
         if "stretch" in xyz:
             self.stretch = xyz["stretch"]
+        if "squash" in xyz:
+            self.squash = xyz["squash"]
 
         # Always start with a fresh clone of the original unet
         unet = p.sd_model.forge_objects.unet.clone()
@@ -63,16 +70,17 @@ class NRSScript(scripts.Script):
             p.sd_model.forge_objects.unet = unet
             return
 
-        unet = NRS().patch(unet, self.squash, self.stretch)[0]
+        unet = NRS().patch(unet, self.skew, self.stretch, self.squash)[0]
 
         p.sd_model.forge_objects.unet = unet
         p.extra_generation_params.update({
             "NRS_enabled": True,
-            "NRS_squash": self.squash,
+            "NRS_skew": self.skew,
             "NRS_stretch": self.stretch,
+            "NRS_squash": self.squash,
         })
 
-        logging.debug(f"NRS: Enabled: {self.enabled}, Squash: {self.squash}, Stretch: {self.stretch}")
+        logging.debug(f"NRS: Enabled: {self.enabled}, Squash: {self.skew}, Stretch: {self.stretch}, Squash: {self.squash}")
 
         return
 
@@ -99,14 +107,19 @@ def make_axis_on_xyz_grid():
             choices=lambda: ["True", "False"]
         ),
         xyz_grid.AxisOption(
-            "(NRS) Squash",
+            "(NRS) Skew",
             float,
-            partial(set_value, field="squash"),
+            partial(set_value, field="skew"),
         ),
         xyz_grid.AxisOption(
             "(NRS) Stretch",
             float,
             partial(set_value, field="stretch"),
+        ),
+        xyz_grid.AxisOption(
+            "(NRS) Squash",
+            float,
+            partial(set_value, field="squash"),
         ),
     ]
 
