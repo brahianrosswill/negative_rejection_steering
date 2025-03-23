@@ -1,15 +1,18 @@
 # Negative Rejection Steering
 NRS seeks to replace the 'naive' linear interpolation of Classifier Free Guidance with a more nuanced and composable steering of the generation process with better mathematical basis.
 
-<img align="right" src="https://github.com/user-attachments/assets/01fabaff-8499-45f6-adad-d54b2c2fb7f1" alt="Graph of NRS vs CFG" style="width: 40%; float: right;">
-
 ### Math Demonstration
-[Interactive Graph on Math3D.org](https://www.math3d.org/aTJW4UZtCh)
+<details>
+<summary>Expand for explaination of algorithm</summary>
+<img align="right" src="https://github.com/user-attachments/assets/01fabaff-8499-45f6-adad-d54b2c2fb7f1" alt="Graph of NRS vs CFG" style="width: 40%; float: right;">
 
 ### NRS is Applied in Three Steps:
 1. **Skewing**: The conditioned output tensor is skewed away from the direction of the rejection of the unconditioned tensor on the conditioned tensor. This lengthens the tensor in a direction perpendicular to its direction without affecting the positive guidance. The tensor is displaced by the rejection x the Displacement parameter.
 2. **Stretching**: The skewed tensor is stretched towards the direction of the original conditioned tensor based on its difference from the projection of uncond on cond. 1x stretch adds 100% of this difference to the tensor's length.
 3. **Squashing**: The skewed and stretched tensor is rescaled towards the original length of the conditioned tensor. 100% squashing outputs the original length of the conditioned tensor simple 'steered' towards the skew & squash output.
+
+[Interactive Graph on Math3D.org](https://www.math3d.org/aTJW4UZtCh)
+</details>
 
 ## Parameters
 Skew and Stretch are roughly similar to CFG, but decomposed, with `Stretch + 2 * Skew = 2 * CFG`, roughly.
