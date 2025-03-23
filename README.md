@@ -16,11 +16,9 @@ Skew and Stretch are roughly similar to CFG, but decomposed, with `Stretch + 2 *
 Meaning, if you want to 'replicate' a simliar effect for a given CFG setting, you should set Skew equal to CFG, and Stretch to 1/2 CFG.
 Squash should initially be set to 0%, then adjusted based on 'burn' of output.
 
-**Skew** changes the 'direction' of generation, which should result in changes to the content and composition of the image.
-
-**Stretch** changes to 'amplification' of generation, which should result in stronger prompt representation.
-
-**Squash** 'normalizes' the resulting guidance back towards the original amplitude. This results in a removal of 'burn-in' and artifacting of the output, transforming these defects into alternative guidance.
+- **Skew** changes the 'direction' of generation, which should result in changes to the content and composition of the image.
+- **Stretch** changes to 'amplification' of generation, which should result in stronger prompt representation.
+- **Squash** 'normalizes' the resulting guidance back towards the original amplitude. This results in a removal of 'burn-in' and artifacting of the output, transforming these defects into alternative guidance.
 
 ## Beginner How-To
 1. Set Skew to your normal CFG Scale setting and Stretch to 1/2 your normal CFG Scale.
