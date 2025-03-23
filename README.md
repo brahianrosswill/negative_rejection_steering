@@ -8,7 +8,7 @@ NRS seeks to replace the 'naive' linear interpolation of Classifier Free Guidanc
 
 ### Math Demonstration
 <details>
-<summary>Expand for explaination of algorithm</summary>
+<summary>Expand for explanation of algorithm</summary>
 <img align="right" src="https://github.com/user-attachments/assets/01fabaff-8499-45f6-adad-d54b2c2fb7f1" alt="Graph of NRS vs CFG" style="width: 40%; float: right;">
 
 ### NRS is Applied in Three Steps:
