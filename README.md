@@ -28,4 +28,4 @@ Squash should initially be set to 0%, then adjusted based on 'burn' of output.
 5. Adjust Stretch up/down to change strength of positive prompt aspects and colors.
 6. Adjust Squash up to remove artifacts and color burn (these will tend to be replaced by additional details and elements).
 
-**Tip**: You can experiment with negative values for Skew and Stretch as well to see what the model 'believes' your negative prompt 'means'.
+**Tip**: You can experiment with negative values for Skew and Stretch as well, to see how the model is interpeting your negative prompt.
