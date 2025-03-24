@@ -1,4 +1,3 @@
-import ldm_patched.modules.model_base
 import logging
 import torch
 
