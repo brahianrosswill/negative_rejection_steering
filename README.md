@@ -37,3 +37,8 @@ Squash should initially be set to 0%, then adjusted based on 'burn' of output.
 6. Adjust Squash up to remove artifacts and color burn (these will tend to be replaced by additional details and elements).
 
 **Tip**: You can experiment with negative values for Skew and Stretch as well, to see how the model is interpeting your negative prompt.
+
+## Examples
+| User | CFG | NRS |
+|---|---|---|
+| Mohnjiles from StabilityMatrix | ![CFG Example](Examples/mohnjiles_cfg.png) | ![NRS Example](Examples/mohnjiles_nrs.png) |
