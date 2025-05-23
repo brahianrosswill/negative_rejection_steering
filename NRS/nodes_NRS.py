@@ -15,7 +15,7 @@ class NRS:
                               # Adjusts the target length for Squashing, as a factor of original cond_len.
                               "squash_target_length_factor": ("FLOAT", {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01}),
                               # Blends the final NRS effect with the original (rescaled) conditioned tensor. 1.0 is full NRS.
-                              "nrs_effect_blend": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                              "nrs_effect_blend": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01})
                               }}
     RETURN_TYPES = ("MODEL",)
     FUNCTION = "patch"
