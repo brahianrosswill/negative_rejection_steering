@@ -93,18 +93,19 @@ def _adaptive_normalize(x_final, cond, normalize_strength, k=10.0, epsilon_norm=
     return x_final
 
 def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6):
+    """
+    Refactored NRS prediction function.
+    """
+    u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
+    c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
+    u_on_c_mag = u_dot_c / (c_dot_c + epsilon)
+    u_on_c = u_on_c_mag * cond
+    u_rej_c = uncond - u_on_c
+
     x_final = None
     match version:
         case "v1":
-            """
-            v1: Original NRS by comfyanonymous
-            Simple rejection and scaling.
-            """
             # displace cond by rejection of uncond on cond
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c = (u_dot_c / (c_dot_c + epsilon)) * cond
-            u_rej_c = uncond - u_on_c
             displaced = (cond - skew * u_rej_c)
             logging.debug(f"NRS.nrs: displaced")
 
@@ -120,16 +121,7 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = squashed + sq_on_c * stretch
             logging.debug(f"NRS.nrs: final")
         case "v2":
-            """
-            v2: NRS v2 by comfyanonymous
-            Adds clamping and a different stretch method.
-            """
             # displace cond by rejection of uncond on cond
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             displaced = cond + stretch * (cond - torch.clamp(u_on_c_mag, min=0, max=1) * cond) - skew * u_rej_c
             logging.debug(f"NRS.nrs: displaced & stretched")
 
@@ -139,16 +131,7 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = displaced * squash_scale
             logging.debug(f"NRS.nrs: final")
         case "v3":
-            """
-            v3: NRS v3 by comfyanonymous
-            A different approach to stretching.
-            """
             # displace cond by rejection of uncond on cond
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             displaced = (cond - skew * u_rej_c)
             logging.debug(f"NRS.nrs: displaced")
 
@@ -163,28 +146,10 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = displaced * squash_scale * stretch_scale
             logging.debug(f"NRS.nrs: final")
         case "v4":
-            """
-            v4: NRS v4 by DGSpitzer
-            A different approach to squash and stretch.
-            """
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             rej_dor_rej = torch.sum(u_rej_c * u_rej_c, dim=-1, keepdim=True)
             x_final = (cond - squash * u_rej_c + stretch * cond * ((rej_dor_rej/(c_dot_c + epsilon)) ** 0.5))
             logging.debug(f"NRS.nrs: displaced")
         case "v0.4.1":
-            """
-            v0.4.1: NRS v0.4.1 by DGSpitzer
-            Separates stretch and skew operations.
-            """
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             rej_dor_rej = torch.sum(u_rej_c * u_rej_c, dim=-1, keepdim=True)
             stretched = cond + stretch * cond * ((rej_dor_rej/(c_dot_c + epsilon)) ** 0.5)
             skewed = stretched - skew * u_rej_c
@@ -193,15 +158,6 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = skewed * squash_scale
             logging.debug(f"NRS.nrs: displaced")
         case "v0.4.2":
-            """
-            v0.4.2: NRS v0.4.2 by DGSpitzer
-            A different approach to stretching based on projection length.
-            """
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             proj_len = torch.sum(u_on_c * u_on_c, dim=-1, keepdim=True) ** 0.5
             cond_len = c_dot_c ** 0.5
             stretched = cond * (1 + stretch * torch.abs(cond_len - proj_len) / (cond_len + epsilon))
@@ -211,15 +167,6 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = skewed * squash_scale
             logging.debug(f"NRS.nrs: displaced")
         case "v0.4.3":
-            """
-            v0.4.3: NRS v0.4.3 by DGSpitzer
-            Similar to v0.4.2 but without the absolute value on the projection length difference.
-            """
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             proj_len = torch.sum(u_on_c * u_on_c, dim=-1, keepdim=True) ** 0.5
             cond_len = c_dot_c ** 0.5
             stretched = cond * (1 + stretch * (cond_len - proj_len) / (cond_len + epsilon))
@@ -229,15 +176,6 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = skewed * squash_scale
             logging.debug(f"NRS.nrs: displaced")
         case "v0.4.4":
-            """
-            v0.4.4: NRS v0.4.4 by DGSpitzer
-            Stretches based on the difference between the conditional and unconditional projections.
-            """
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             cond_len = c_dot_c ** 0.5
             proj_diff = cond - u_on_c
             proj_diff_len = torch.sum(proj_diff * proj_diff, dim=-1, keepdim=True) ** 0.5
@@ -248,15 +186,6 @@ def nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon=1e-6)
             x_final = skewed * squash_scale
             logging.debug(f"NRS.nrs: displaced")
         case "v0.4.5":
-            """
-            v0.4.5: NRS v0.4.5 by DGSpitzer
-            A simpler version of v0.4.4.
-            """
-            u_dot_c = torch.sum(uncond * cond, dim=-1, keepdim=True)
-            c_dot_c = torch.sum(cond * cond, dim=-1, keepdim=True)
-            u_on_c_mag = (u_dot_c / (c_dot_c + epsilon))
-            u_on_c = u_on_c_mag * cond
-            u_rej_c = uncond - u_on_c
             cond_len = c_dot_c ** 0.5
             proj_diff = cond - u_on_c
 
@@ -282,21 +211,22 @@ class NRS:
                               "squash": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                               "normalize_strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                               "adaptive_k": ("FLOAT", {"default": 10.0, "min": 0.0, "max": 100.0, "step": 0.1}),
+                              "epsilon": ("FLOAT", {"default": 1e-6, "min": 1e-9, "max": 1.0, "step": 1e-7}),
                               }}
     RETURN_TYPES = ("MODEL",)
     FUNCTION = "patch"
 
     CATEGORY = "advanced/model"
 
-    def patch(self, model, version, skew, stretch, squash, normalize_strength, adaptive_k):
-        def nrs(args, normalize_strength): # Added normalize_strength here
+    def patch(self, model, version, skew, stretch, squash, normalize_strength, adaptive_k, epsilon):
+        def nrs(args):
             cond = args["cond"]
             uncond = args["uncond"]
             sigma = args["sigma"]
             sigma = sigma.view(sigma.shape[:1] + (1,) * (cond.ndim - 1))
             x_orig = args["input"]
 
-            logging.debug(f"NRS.nrs: Skew: {skew}, Stretch: {stretch}, Squash: {squash}, Normalize: {normalize_strength}") # Added Normalize to log
+            logging.debug(f"NRS.nrs: Skew: {skew}, Stretch: {stretch}, Squash: {squash}, Normalize: {normalize_strength}, Epsilon: {epsilon}")
 
             #rescale cfg has to be done on v-pred model output
             x = x_orig / (sigma * sigma + 1.0)
@@ -304,16 +234,15 @@ class NRS:
             uncond = ((x - (x_orig - uncond)) * (sigma ** 2 + 1.0) ** 0.5) / (sigma)
             logging.debug(f"NRS.nrs: generated cond and uncond")
 
-            x_final = nrs_v_prediction(version, cond, uncond, skew, stretch, squash)
+            x_final = nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon)
 
             # Adaptive Normalization Logic
             x_final = _adaptive_normalize(x_final, cond, normalize_strength, adaptive_k)
 
             return x_orig - (x - x_final * sigma / (sigma * sigma + 1.0) ** 0.5)
-        
+
         m = model.clone()
-        # Use a lambda to pass normalize_strength to the nrs function
-        m.set_model_sampler_cfg_function(lambda args: nrs(args, normalize_strength), True)
+        m.set_model_sampler_cfg_function(nrs, True)
         return (m, )
 
 class NRSEpsilon:
@@ -322,11 +251,13 @@ class NRSEpsilon:
         return {
             "required": {
                 "model": ("MODEL",),
+                "version": (["v1", "v2", "v3", "v4", "v0.4.1", "v0.4.2", "v0.4.3", "v0.4.4", "v0.4.5"],),
                 "skew": ("FLOAT", {"default": 4.0, "min": -30.0, "max": 30.0, "step": 0.01}),
                 "stretch": ("FLOAT", {"default": 2.0, "min": -30.0, "max": 30.0, "step": 0.01}),
                 "squash": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "normalize_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "adaptive_k": ("FLOAT", {"default": 10.0, "min": 0.0, "max": 100.0, "step": 0.1}),
+                "epsilon": ("FLOAT", {"default": 1e-6, "min": 1e-9, "max": 1.0, "step": 1e-7}),
             }
         }
 
@@ -334,20 +265,14 @@ class NRSEpsilon:
     FUNCTION = "patch"
     CATEGORY = "advanced/model"
 
-    def patch(self, model, skew, stretch, squash, normalize_strength, adaptive_k=10.0):
-        # It's important to import torch and logging if they are not already top-level in the file.
-        # Assuming 'torch' and 'logging' are available in the scope from file-level imports.
-
+    def patch(self, model, version, skew, stretch, squash, normalize_strength, adaptive_k, epsilon):
         def nrs(args):
             cond = args["cond"]
             uncond = args["uncond"]
-            # sigma = args["sigma"] # Not used here
-            # x_orig = args["input"] # Not used here
 
-            # Use logging if available, otherwise this line would need to be conditional or removed.
-            # logging.debug(f"NRSEpsilon.nrs: Skew: {skew}, Stretch: {stretch}, Squash: {squash}, Normalize: {normalize_strength}")
+            logging.debug(f"NRSEpsilon.nrs: Skew: {skew}, Stretch: {stretch}, Squash: {squash}, Normalize: {normalize_strength}, Epsilon: {epsilon}")
 
-            x_final = nrs_v_prediction("v0.4.5", cond, uncond, skew, stretch, squash)
+            x_final = nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon)
 
             # Adaptive Normalization Logic
             x_final = _adaptive_normalize(x_final, cond, normalize_strength, adaptive_k)
@@ -365,6 +290,7 @@ class NRSFDG:
         return {
             "required": {
                 "model": ("MODEL",),
+                "version": (["v1", "v2", "v3", "v4", "v0.4.1", "v0.4.2", "v0.4.3", "v0.4.4", "v0.4.5"],),
                 "skew": ("FLOAT", {"default": 4.0, "min": -30.0, "max": 30.0, "step": 0.01}),
                 "stretch": ("FLOAT", {"default": 2.0, "min": -30.0, "max": 30.0, "step": 0.01}),
                 "squash": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01}),
@@ -394,6 +320,7 @@ class NRSFDG:
                     "step": 1
                 }),
                 "adaptive_k": ("FLOAT", {"default": 10.0, "min": 0.0, "max": 100.0, "step": 0.1}),
+                "epsilon": ("FLOAT", {"default": 1e-6, "min": 1e-9, "max": 1.0, "step": 1e-7}),
             }
         }
 
@@ -401,7 +328,7 @@ class NRSFDG:
     FUNCTION = "patch"
     CATEGORY = "advanced/model"
 
-    def patch(self, model, skew, stretch, squash, normalize_strength, guidance_scale_high, guidance_scale_low, levels, fdg_steps, adaptive_k=10.0):
+    def patch(self, model, version, skew, stretch, squash, normalize_strength, guidance_scale_high, guidance_scale_low, levels, fdg_steps, adaptive_k, epsilon):
         guidance_scale = create_linear_guidance_scale(guidance_scale_high, guidance_scale_low, levels)
         parallel_weights = [1.0] * (levels)
 
@@ -412,6 +339,8 @@ class NRSFDG:
             x_orig = args["input"]
             sample_sigmas = args["model_options"]["transformer_options"]["sample_sigmas"]
             step_limits = fdg_steps
+
+            logging.debug(f"NRSFDG.nrs_fdg: Skew: {skew}, Stretch: {stretch}, Squash: {squash}, Normalize: {normalize_strength}, Epsilon: {epsilon}")
 
             if uncond is not None:
                 if step_limits >= (len(sample_sigmas) - 1):
@@ -432,7 +361,7 @@ class NRSFDG:
             cond = ((x - (x_orig - cond)) * (sigma ** 2 + 1.0) ** 0.5) / (sigma)
             uncond = ((x - (x_orig - uncond)) * (sigma ** 2 + 1.0) ** 0.5) / (sigma)
 
-            x_final = nrs_v_prediction("v0.4.5", cond, uncond, skew, stretch, squash)
+            x_final = nrs_v_prediction(version, cond, uncond, skew, stretch, squash, epsilon)
 
             # Adaptive Normalization Logic
             x_final = _adaptive_normalize(x_final, cond, normalize_strength, adaptive_k)
