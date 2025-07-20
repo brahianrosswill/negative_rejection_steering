@@ -73,19 +73,17 @@ class NRS:
         return PredictionType.UNKNOWN
 
    
-    def _pre_scale_conditioning(self, x_orig, sigma, cond, uncond):
+    def _pre_scale_conditioning(self, x_orig, sig_root, sigma, cond, uncond):
         x_div = None
         eps_cond = cond
         eps_uncond = uncond
         if self.__pred_type == PredictionType.V:
             # v → ε conversion
             logging.debug(f"NRS._pre_scale_conditioning: generating x_div, cond, and uncond for v-pred")
-            sigma2_1 = (sigma ** 2 + 1.0)
-            x_div = x_orig / sigma2_1
-            root = sigma2_1.sqrt()
+            x_div = x_orig / (sigma ** 2 + 1)
 
-            eps_cond = ((x_div - (x_orig - cond)) * root) / (sigma)
-            eps_uncond = ((x_div - (x_orig - uncond)) * root) / (sigma)
+            eps_cond = ((x_div - (x_orig - cond)) * sig_root) / (sigma)
+            eps_uncond = ((x_div - (x_orig - uncond)) * sig_root) / (sigma)
         elif self.__pred_type == PredictionType.EPS:
             logging.debug(f"NRS._pre_scale_conditioning: already in eps, no pre-scale needed")
             pass  # already in ε space
@@ -96,40 +94,37 @@ class NRS:
         
         return x_div, eps_cond, eps_uncond
 
-    def _post_scale_conditioning(self, x_orig, x_div, x_final, sigma):
+    def _post_scale_conditioning(self, x_orig, x_div, x_final, sig_root, sigma):
+        nrs_result = x_final
         if self.__pred_type == PredictionType.V:
             # ε → v conversion
-            root = (sigma ** 2 + 1).sqrt()
-
             logging.debug(f"NRS._post_scale_conditioning: generating cfg_result for v-pred")
-            return x_orig - (x_div - x_final * sigma / root)
+            nrs_result = x_orig - (x_div - x_final * sigma / sig_root)
         elif self.__pred_type == PredictionType.EPS:
             # already in ε space
             logging.debug(f"NRS._post_scale_conditioning: already in eps, no post-scale needed")
-            return x_final
+            pass
         elif self.__pred_type == PredictionType.X0:
             raise NotImplementedError("NRS._post_scale_conditioning: x0-prediction not supported yet.")
         else:
             raise RuntimeError("NRS._post_scale_conditioning: Could not determine prediction type for this model.")
+        return nrs_result
         
     def patch(self, model, skew, stretch, squash):
         self.__pred_type = self._get_pred_type(model) if not hasattr(self, "__pred_type") else self.__pred_type
 
         def nrs(args):
+            logging.debug(f"NRS.nrs: Skew: {skew}, Stretch: {stretch}, Squash: {squash}")
+            self.__pred_type = self.__pred_type if self.__pred_type is not None else self._get_pred_type(model)
             cond = args["cond"]
             uncond = args["uncond"]
             x_orig = args["input"]
             
-            self.__pred_type = self.__pred_type if self.__pred_type is not None else self._get_pred_type(model)
-            sigma = None
-            if self.__pred_type == PredictionType.V:
-                sigma = args["sigma"]
-                sigma = sigma.view(sigma.shape[:1] + (1,) * (cond.ndim - 1))
-
-
-            logging.debug(f"NRS.nrs: Skew: {skew}, Stretch: {stretch}, Squash: {squash}")
+            sigma = args["sigma"]
+            sigma = sigma.view(sigma.shape[:1] + (1,) * (cond.ndim - 1))
+            sig_root = (sigma ** 2 + 1).sqrt()
             
-            x_div, eps_cond, eps_uncond = self._pre_scale_conditioning(x_orig, sigma, cond, uncond)
+            x_div, eps_cond, eps_uncond = self._pre_scale_conditioning(x_orig, sig_root, sigma, cond, uncond)
 
             x_final = None
             match "v0.5.0":
@@ -299,7 +294,7 @@ class NRS:
                     squash_scale = (1 - squash) + (squash * (cond_len / nrs_len))
                     x_final = skewed * squash_scale.view(-1, 1, 1, 1)
 
-            return self._post_scale_conditioning(x_orig, x_div, x_final, sigma)
+            return self._post_scale_conditioning(x_orig, x_div, x_final, sig_root, sigma)
         
         m = model.clone()
         m.set_model_sampler_cfg_function(nrs, True)
