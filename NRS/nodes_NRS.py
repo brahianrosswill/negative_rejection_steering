@@ -289,7 +289,7 @@ class NRS:
                     c_dot_c = _nrm2(eps_cond) + eps # [B,1]
                     u_dot_c = _dot(eps_uncond, eps_cond) # [B,1]
 
-                    u_on_c = (u_dot_c / c_dot_c).unsqueeze(-1) * eps_cond # [B,1,1,1] * [B,C,H,W]
+                    u_on_c = (u_dot_c / c_dot_c).view(-1, 1, 1, 1) * eps_cond # [B,1,1,1] * [B,C,H,W]
                     u_rej_c = eps_uncond - u_on_c
                     proj_diff = eps_cond - u_on_c
 
@@ -305,7 +305,7 @@ class NRS:
                     nrs_len = torch.sqrt(_nrm2(skewed) + eps) # [B,1]
 
                     squash_scale = (1 - squash) + squash * (cond_len / nrs_len)
-                    x_final = skewed * squash_scale.unsqueeze(-1)
+                    x_final = skewed * squash_scale.view(-1, 1, 1, 1)
 
             return self._post_scale_conditioning(x_orig, x_div, x_final, sigma)
         
