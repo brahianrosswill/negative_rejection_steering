@@ -1,3 +1,5 @@
+[![ComfyUI Registry](https://github.com/Reithan/negative_rejection_steering/actions/workflows/publish.yml/badge.svg)](https://github.com/Reithan/negative_rejection_steering/actions/workflows/publish.yml)
+
 # Negative Rejection Steering
 NRS seeks to replace the 'naive' linear interpolation of Classifier Free Guidance with a more nuanced and composable steering of the generation process with better mathematical basis.
 
