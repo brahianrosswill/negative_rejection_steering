@@ -1,3 +1,4 @@
+[![CodeQL](https://github.com/Reithan/negative_rejection_steering/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Reithan/negative_rejection_steering/actions/workflows/github-code-scanning/codeql)
 [![ComfyUI Registry](https://github.com/Reithan/negative_rejection_steering/actions/workflows/publish.yml/badge.svg)](https://registry.comfy.org/nodes/negative_rejection_steering)
 
 # Negative Rejection Steering
