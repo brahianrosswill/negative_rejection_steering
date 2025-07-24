@@ -452,7 +452,7 @@ class NRS:
                     if sigma.item() > sample_sigmas[step_limits].item():
                         x_final = laplacian_guidance(
                             x_final,
-                            uncond,
+                            nrs_uncond,
                             guidance_scale,
                             parallel_weights
                         )
